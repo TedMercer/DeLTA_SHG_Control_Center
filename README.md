@@ -86,43 +86,16 @@ python mainController.py
 
 This script initializes the camera and motors, performs synchronized data acquisition, and saves the results to the specified directory.
 
-### Using the Data Analysis Class
+### Using the SHGUI
 
-```python
-from SHG_Analysis_class import DataPlotter
-
-# Initialize the data plotter
-dp = DataPlotter()
-
-# Load data
-dp.load_data('path_to_your_data_file.sif')  # Supports .tiff, .txt, .csv, .sif, and .h5
-
-# Plot the data
-dp.plot_data(vmin=0, vmax=1000, cmap='viridis')
-
-# Select background regions
-dp.background()
-
-# Define ROI
-dp.interactive_circle_selection()
-
-# Calculate average intensity
-dp.calculate_average_intensity(bin_size=10)
-
-# Plot polar intensity
-dp.polar_plot()
-
-# Save results
-dp.save_txt('path_to_save_directory', 'Your description here')
-```
-
+Refer to my analysis repo on how to analyze the data. [SHGUI](https://github.com/TedMercer/SHGUI)
 ---
 
 ## 📸 Example Workflow
 
 1. **Initialize the camera and motors using `mainController.py`.**
 2. **Acquire synchronized data while rotating the sample.**
-3. **Analyze the acquired data using `SHG_Analysis_class.py`.**
+3. **Analyze the acquired data using [SHGUI](https://github.com/TedMercer/SHGUI).**
 4. **Visualize and export the results for further analysis.**
 
 ---
@@ -162,7 +135,7 @@ For questions, suggestions, or contributions, please contact [e.mercer@northeast
 
 ## 📝 License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. Please look at the [LICENSE](LICENSE) file for details.
 
 ---
 
