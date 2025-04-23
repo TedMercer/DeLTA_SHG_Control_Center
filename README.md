@@ -88,7 +88,7 @@ This script initializes the camera and motors, performs synchronized data acquis
 
 ### Using the SHGUI
 
-Refer to my analysis repo on how to analyze the data. [SHGUI](https://github.com/TedMercer/SHGUI)
+Refer to my analysis repo on how to view the data. [SHGUI](https://github.com/TedMercer/SHGUI)
 ---
 
 ## 📸 Example Workflow
