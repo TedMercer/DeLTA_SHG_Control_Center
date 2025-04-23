@@ -169,4 +169,4 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 ## 🙌 Acknowledgments
 
 - [pylablib](https://github.com/labpy/pylablib) for device interfacing
-- [sif_parser](https://github.com/andyofmelbourne/sif_parser) for `.sif` file handling
+- [Standa Customer Support](https://www.standa.lt/) for their support
