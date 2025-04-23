@@ -1,202 +1,137 @@
-# -*- coding: utf-8 -*-
 """
-Created on Tue Apr  1 13:41:32 2025
+Created on Tue Apr  1 11:32:58 2025
 
 @author: TEM
 """
-
-import os
-import threading
 import time
-import libximc
+import threading
+import libximc.highlevel as ximc
 
 class StandaMotor:
     def __init__(self, device_uri):
         """
-        Initialize the Standa motor controller.
-
-        Parameters
-        ----------
-        device_uri : str
-            The URI of the device to connect to. For example:
-            - Serial port: "xi-com:\\\\.\\COM1"
-            - USB: "xi-usb:001:002"
+        Initialize a single motor via its device URI.
+        Example URI: r"xi-com:\\.\COM29"
         """
-        self.device_uri = device_uri
-        self.device_id = None
-        self.open_device()
-
-    def open_device(self):
-        """
-        Open the connection to the device.
-        """
-        self.device_id = libximc.lib.open_device(self.device_uri.encode())
-        if self.device_id <= 0:
-            raise Exception(f"Failed to open device at {self.device_uri}")
-
-    def close_device(self):
-        """
-        Close the connection to the device.
-        """
-        if self.device_id is not None and self.device_id > 0:
-            libximc.lib.close_device(self.device_id)
-            self.device_id = None
-        else:
-            print("Device was not open or has already been closed.")
-
-
-    def load_configuration(self, config_file_path):
-        """
-        Load settings from a configuration file into the controller.
-
-        Parameters
-        ----------
-        config_file_path : str
-            The path to the configuration (.cfg) file.
-        """
-        if not os.path.isfile(config_file_path):
-            raise FileNotFoundError(f"Configuration file not found: {config_file_path}")
-
-        if self.device_id:
-            result = libximc.lib.command_upload_settings(self.device_id, config_file_path.encode())
-            if result != 0:
-                raise Exception(f"Failed to load configuration from {config_file_path}")
-            print(f"Configuration loaded from {config_file_path}")
-
-    def set_speed_acceleration(self, speed, acceleration):
-        """
-        Set the speed and acceleration parameters for the motor.
-
-        Parameters
-        ----------
-        speed : int
-            The desired speed in steps per second.
-        acceleration : int
-            The desired acceleration in steps per second squared.
-        """
-        move_settings = libximc.move_settings_t()
-        libximc.lib.get_move_settings(self.device_id, move_settings)
-        move_settings.Speed = speed
-        move_settings.Accel = acceleration
-        libximc.lib.set_move_settings(self.device_id, move_settings)
-
-    def rotate_continuous(self, direction=1):
-        """
-        Rotate the motor continuously in the specified direction.
-
-        Parameters
-        ----------
-        direction : int, optional
-            The direction of rotation (1 for forward, -1 for backward). Default is 1.
-        """
-        if direction not in [-1, 1]:
-            raise ValueError("Direction must be 1 (forward) or -1 (backward).")
-        libximc.lib.command_left(self.device_id) if direction == 1 else libximc.lib.command_right(self.device_id)
-
-    def stop(self):
-        """
-        Stop the motor's movement immediately.
-        """
-        if self.device_id:
-            libximc.lib.command_stop(self.device_id)
-            
+        self.axis = ximc.Axis(device_uri)
+        self.axis.open_device()
+    
     def home(self):
+        """Home the motor using soft stop homing."""
+        self.axis.command_home()
+
+    def zero(self):
+        """Set current position to 0."""
+        self.axis.command_zero()
+
+    def move_relative(self, distance_units):
+        """Move the motor by a relative distance (in units, e.g., degrees)."""
+        self.axis.command_move(distance_units)
+
+    def move_absolute(self, position_units):
+        """Move the motor to an absolute position (in units, e.g., degrees)."""
+        self.axis.command_move(position_units, relative=False)
+
+    def rotate_continuous(self, direction="right", duration=None):
         """
-        Perform the homing procedure to move the motor to its predefined home position.
+        Start continuous rotation.
+        direction: "right" or "left"
+        dumorationration: if provided, rotate for a number of seconds then stop.
         """
-        if self.device_id:
-            result = libximc.lib.command_home(self.device_id)
-            if result != 0:
-                raise Exception("Failed to execute HOME command.")
-            self.wait_for_stop()
-            print("Homing completed successfully.")
+        if direction.lower() == "right":
+            self.axis.command_right()
+        elif direction.lower() == "left":
+            self.axis.command_left()
+        else:
+            raise ValueError("Direction must be 'right' or 'left'")
+        
+        if duration is not None:
+            time.sleep(duration)
+            self.stop()
 
-    def zero_position(self):
+    def set_speed(self, speed):
         """
-        Set the current motor position as zero without moving the motor.
+        Set motor speed in degrees/sec and report frequency in Hz.
         """
-        if self.device_id:
-            result = libximc.lib.command_zero(self.device_id)
-            if result != 0:
-                raise Exception("Failed to execute ZERO command.")
-            print("Current position set to zero.")
-
-    def move_absolute(self, position):
-        """
-        Move the motor to an absolute position.
-
-        Parameters
-        ----------
-        position : int
-            The target position in steps or microsteps, depending on the controller's configuration.
-        """
-        if self.device_id:
-            result = libximc.lib.command_move(self.device_id, position, 0)
-            if result != 0:
-                raise Exception(f"Failed to move to absolute position {position}.")
-            self.wait_for_stop()
-            print(f"Moved to absolute position {position}.")
-
-    def move_relative(self, displacement):
-        """
-        Move the motor by a relative displacement.
-
-        Parameters
-        ----------
-        displacement : int
-            The displacement in steps or microsteps. Positive values move the motor forward; negative values move it backward.
-        """
-        if self.device_id:
-            result = libximc.lib.command_movr(self.device_id, displacement, 0)
-            if result != 0:
-                raise Exception(f"Failed to move by relative displacement {displacement}.")
-            self.wait_for_stop()
-            print(f"Moved by relative displacement {displacement}.")
-
-    def wait_for_stop(self, interval=0.1):
-        """
-        Wait until the motor stops moving.
-
-        Parameters
-        ----------
-        interval : float
-            The time interval (in seconds) to check the motor status.
-        """
-        if self.device_id:
-            while True:
-                status = libximc.status_t()
-                libximc.lib.get_status(self.device_id, status)
-                if status.MvCmdSts == 0:  # Movement command status: 0 means stopped
-                    break
-                time.sleep(interval)
-
-
-# motor1 = StandaMotor("xi-com:\\\\.\\COM5")
-# motor2 = StandaMotor("xi-com:\\\\.\\COM4")
-
-# motor1.load_configuration(r"C:\Users\DELTA_LAB_1\Desktop\STANDA\8MRU-1-MEn1.cfg")
-# motor2.load_configuration(r"C:\Users\DELTA_LAB_1\Desktop\STANDA\8MRU-1-MEn1.cfg")
-
-
-def rotate_motor(motor, direction):
-    motor.rotate_continuous(direction)
-
-def rotate_to_collect(speed, acceleration, t, motor1, motor2, direction =1):
+        mvst = self.axis.get_move_settings()
+        mvst.Speed = speed
+        self.axis.set_move_settings(mvst)
     
-    motor1.set_speed_acceleration(speed, acceleration)
-    motor2.set_speed_acceleration(speed, acceleration)
-    print(f"Both have been set to {speed} speed and {acceleration} acceleration")
+        # Assuming speed is in degrees/sec, convert to Hz (revolutions/sec)
+        frequency_hz = speed / 360
+        print(f"[Set Speed] Speed set to {speed:.2f} deg/s ({frequency_hz:.3f} Hz)")
     
-    thread1 = threading.Thread(target=rotate_motor, args=(motor1, 1))
-    thread2 = threading.Thread(target=rotate_motor, args=(motor2, 1))
+    def set_acceleration(self, accel):
+        """
+        Set motor acceleration in degrees/sec² and report how fast it would reach full speed (optional).
+        """
+        mvst = self.axis.get_move_settings()
+        mvst.Accel = accel
+        self.axis.set_move_settings(mvst)
     
-    thread1.start()
-    thread2.start()
-    
-    time.sleep(t)
-    
-    motor1.stop()
-    motor2.stop()
-    
-    thread1.join()
-    thread2.join()
+        print(f"[Set Accel] Acceleration set to {accel:.2f} deg/s²")
+
+    def stop(self, soft=False):
+        """Stop the motor. Soft stop decelerates to a halt."""
+        if soft:
+            self.axis.command_sstp()
+        else:
+            self.axis.command_stop()
+
+    def get_position(self):
+        """Return the current position in user units (e.g., degrees)."""
+        return self.axis.get_position().Position
+
+    def close(self):
+        """Clean up (optional with libximc)."""
+        del self.axis
+
+
+class TwoAxisController:
+    def __init__(self, motor1, motor2):
+        self.motor1 = motor1
+        self.motor2 = motor2
+
+    def home_both(self):
+        t1 = threading.Thread(target=self.motor1.home)
+        t2 = threading.Thread(target=self.motor2.home)
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+
+    def zero_both(self):
+        self.motor1.zero()
+        self.motor2.zero()
+
+    def move_relative_both(self, d1, d2):
+        t1 = threading.Thread(target=self.motor1.move_relative, args=(d1,))
+        t2 = threading.Thread(target=self.motor2.move_relative, args=(d2,))
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+
+    def move_absolute_both(self, p1, p2):
+        t1 = threading.Thread(target=self.motor1.move_absolute, args=(p1,))
+        t2 = threading.Thread(target=self.motor2.move_absolute, args=(p2,))
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+
+    def rotate_both(self, dir1, dir2, duration):
+        t1 = threading.Thread(target=self.motor1.rotate_continuous, args=(dir1, duration))
+        t2 = threading.Thread(target=self.motor2.rotate_continuous, args=(dir2, duration))
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+
+    def stop_both(self, soft=False):
+        self.motor1.stop(soft)
+        self.motor2.stop(soft)
+
+    def close(self):
+        self.motor1.close()
+        self.motor2.close()
