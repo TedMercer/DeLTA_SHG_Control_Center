@@ -119,7 +119,7 @@ To test individual components:
   ```python
   from motorController import StandaMotor
   motor = StandaMotor('xi-com:\\\\.\\COM4')
-  motor.home()
+  motor.gth()
   motor.set_speed(500)
   motor.rotate('right', duration=5)
   motor.close()
