@@ -48,8 +48,7 @@ def run_synchronized_measurement():
         motor1 = StandaMotor(com1)
         motor2 = StandaMotor(com2)
         controller = TwoAxisController(motor1, motor2)
-        controller.home_both()
-        controller.zero_both()
+        controller.gtz_both()
         controller.sync_speeds = lambda speed, accel: [
             motor1.set_speed(speed),
             motor1.set_acceleration(accel),

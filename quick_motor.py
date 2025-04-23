@@ -26,8 +26,8 @@ if use_recent == 'o':
     motor1 = StandaMotor(com1)
     motor2 = StandaMotor(com2)
     controller = TwoAxisController(motor1, motor2)
-    controller.home_both()
-    controller.zero_both()
+    controller.gth_both()
+    controller.gtz_both()
     usr = input("Rotate? (y/n): ").strip().lower()
     if usr == 'y':
         controller.sync_speeds = lambda speed, accel: [
@@ -53,7 +53,12 @@ if use_recent == 'o':
 
 if use_recent == 'c':
     if 'controller' in globals():
-        controller.close()
+        try:
+            controller.close()
+            del controller
+            print("✅ Controller closed and deleted.")
+        except Exception as e:
+            print(f"⚠️ Error closing controller: {e}")
     else:
-        print("controller object not found. Please open the contoller first.")
+        print("⚠️ 'controller' object not found in global scope.")
         

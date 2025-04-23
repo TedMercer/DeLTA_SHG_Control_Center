@@ -16,21 +16,46 @@ class StandaMotor:
         self.axis = ximc.Axis(device_uri)
         self.axis.open_device()
     
-    def home(self):
+    def gth(self):
         """Home the motor using soft stop homing."""
         self.axis.command_home()
+        self.axis.command_wait_for_stop(100)
+        print("HOME!")
+    
+    def gtz(self):
+        '''send the motor to zero using soft stop'''
+        pos = self.axis.get_position()
+        hol = pos.Position * -.03
+        self.move(hol)
+        print("Moving...")
+        self.axis.command_wait_for_stop(100)
+        print("AT ZERO")
+
 
     def zero(self):
         """Set current position to 0."""
         self.axis.command_zero()
 
-    def move_relative(self, distance_units):
+    def move(self, distance_units):
         """Move the motor by a relative distance (in units, e.g., degrees)."""
-        self.axis.command_move(distance_units)
-
-    def move_absolute(self, position_units):
-        """Move the motor to an absolute position (in units, e.g., degrees)."""
-        self.axis.command_move(position_units, relative=False)
+        step_to_deg = .03
+        engine_setting = self.axis.get_engine_settings()
+        self.axis.set_calb(step_to_deg, engine_setting.MicrostepMode)
+    
+    
+        position_calb = self.axis.get_position_calb()
+        print("Current position:", position_calb.Position, "°")
+    
+        print("Moving by:", distance_units, "°")
+    
+        try:
+            
+            self.axis.command_movr_calb(distance_units)
+            self.axis.command_wait_for_stop(100)  
+            position_calb = self.axis.get_position_calb()
+            print("New position:", position_calb.Position, "°")
+        except Exception as e:
+            print("An error occurred during motor movement:", e)
 
     def rotate_continuous(self, direction="right", duration=None):
         """
@@ -57,13 +82,12 @@ class StandaMotor:
         mvst.Speed = speed
         self.axis.set_move_settings(mvst)
     
-        # Assuming speed is in degrees/sec, convert to Hz (revolutions/sec)
         frequency_hz = speed / 360
         print(f"[Set Speed] Speed set to {speed:.2f} deg/s ({frequency_hz:.3f} Hz)")
     
     def set_acceleration(self, accel):
         """
-        Set motor acceleration in degrees/sec² and report how fast it would reach full speed (optional).
+        Set motor acceleration in degrees/sec² and report how fast it would reach full speed.
         """
         mvst = self.axis.get_move_settings()
         mvst.Accel = accel
@@ -83,8 +107,13 @@ class StandaMotor:
         return self.axis.get_position().Position
 
     def close(self):
-        """Clean up (optional with libximc)."""
-        del self.axis
+        try:
+            self.axis.close_device()  
+        except AttributeError:
+            pass  # axis might already be deleted
+        finally:
+            del self.axis
+
 
 
 class TwoAxisController:
@@ -92,9 +121,17 @@ class TwoAxisController:
         self.motor1 = motor1
         self.motor2 = motor2
 
-    def home_both(self):
-        t1 = threading.Thread(target=self.motor1.home)
-        t2 = threading.Thread(target=self.motor2.home)
+    def gth_both(self):
+        t1 = threading.Thread(target=self.motor1.gth)
+        t2 = threading.Thread(target=self.motor2.gth)
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+        
+    def gtz_both(self):
+        t1 = threading.Thread(target=self.motor1.gtz)
+        t2 = threading.Thread(target=self.motor2.gtz)
         t1.start()
         t2.start()
         t1.join()
@@ -105,16 +142,8 @@ class TwoAxisController:
         self.motor2.zero()
 
     def move_relative_both(self, d1, d2):
-        t1 = threading.Thread(target=self.motor1.move_relative, args=(d1,))
-        t2 = threading.Thread(target=self.motor2.move_relative, args=(d2,))
-        t1.start()
-        t2.start()
-        t1.join()
-        t2.join()
-
-    def move_absolute_both(self, p1, p2):
-        t1 = threading.Thread(target=self.motor1.move_absolute, args=(p1,))
-        t2 = threading.Thread(target=self.motor2.move_absolute, args=(p2,))
+        t1 = threading.Thread(target=self.motor1.move, args=(d1,))
+        t2 = threading.Thread(target=self.motor2.move, args=(d2,))
         t1.start()
         t2.start()
         t1.join()
