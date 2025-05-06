@@ -65,11 +65,12 @@ class Cam:
         pass
 
     def get_temp(self):
-        """
-        Retrieve the current temperature of the camera.
-        """
-        t = self.cam.get_temperature()
-        print(f"Current temperature: {t} °C")
+        """Return current sensor temperature in °C, or None if unreadable."""
+        try:
+            return self.cam.get_temperature()
+        except Exception:
+            return None
+
         
     def set_temperature(self, temperature, enable_cooler=True):
         """
@@ -95,6 +96,7 @@ class Cam:
             Exposure time in seconds.
         """
         self.cam.set_exposure(exposure)
+        self.exposure = exposure
 
     def set_roi(self, roi=(0, 512, 0, 512)):
         """
@@ -169,7 +171,7 @@ class Cam:
         ndarray
             Acquired image as a 2D NumPy array.
         """
-        image = self.cam.snap()
+        image = self.cam.snap(timeout=self.exposure + 2)
         if save:
             self.save_to_h5(image, f"{self.name}")
         return image

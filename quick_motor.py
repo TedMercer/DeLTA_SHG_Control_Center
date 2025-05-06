@@ -9,9 +9,9 @@ from motorController import StandaMotor, TwoAxisController
 import threading
 import time
 
-motor_speed = 500
+motor_speed = 250
 motor_accel = 1200
-rotation_duration = 10
+rotation_duration = 60
 rotation_dir1 = "right"
 rotation_dir2 = "right"
 
